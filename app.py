@@ -11,13 +11,19 @@ def load_image(image_file):
     return Image.open(image_file)
 
 def get_document_types():
-    """Retrieve document types from the API."""
+    """Retrieve all document types from the API."""
     url = "https://edms-demo.epik.live/api/v4/document_types/"
-    response = requests.get(url, auth=('admin', '1234@BCD'))
-    if response.status_code == 200:
-        return response.json()['results']
-    else:
-        return []
+    document_types = []
+    next_url = url
+    while next_url:
+        response = requests.get(next_url, auth=('admin', '1234@BCD'))
+        if response.status_code == 200:
+            data = response.json()
+            document_types.extend(data['results'])
+            next_url = data['next']  # Update next_url for the next iteration
+        else:
+            return []  # Return an empty list if there's an error
+    return document_types
 
 def get_metadata_types(doc_type_id):
     """Retrieve metadata types for a specific document type."""
@@ -33,6 +39,7 @@ def save_to_json(file_base64, file_name, doc_type_id, metadata_values):
     metadata_list = [{"id": id, "value": value} for id, value in metadata_values.items()]
     data = {
         "file_base64": file_base64,
+        "dms_domain": "edms-demo.epik.live",
         "file_name": file_name,
         "doctype_id": doc_type_id,
         "docmeta_data": metadata_list
@@ -50,7 +57,7 @@ def save_and_download_json(file_base64, file_name, doc_type_id, metadata_values)
     with open('data.json', 'rb') as f:
         data = f.read()
     progress_bar.progress(75)
-    #st.download_button(label="Download JSON", data=data, file_name="data.json", mime="application/json")
+    st.download_button(label="Download JSON", data=data, file_name="data.json", mime="application/json")
     json_data = json.loads(data)
     
     # Sending the data to the API endpoint

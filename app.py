@@ -5,6 +5,38 @@ import base64
 from PIL import Image
 import fitz  # PyMuPDF
 import io
+import re
+
+def safe_load_json(validation_arguments):
+    try:
+        # Replace single quotes with double quotes to make it valid JSON
+        valid_json = validation_arguments.replace("'", '"')
+        # The JSON loads function expects double backslashes for escape sequences.
+        # Replacing single backslashes with double backslashes before JSON parsing to preserve them in regex.
+        valid_json = valid_json.replace("\\", "\\\\")
+        # Load the JSON string
+        data = json.loads(valid_json)
+        # Extract the 'pattern' and replace double backslashes with single backslashes for regex usage
+        pattern = data['pattern']
+        cleaned_pattern = pattern.replace('\\\\', '\\')
+        #st.text(cleaned_pattern)
+        return cleaned_pattern      
+    except json.JSONDecodeError as e:
+        print(f"Error decoding JSON: {e}")
+        return ""
+    except KeyError as e:
+        print(f"Missing key in JSON data: {e}")
+        return ""
+    
+def validate_input(input_value, pattern):
+    """Return True if input matches pattern, otherwise False."""
+    if pattern and not re.match(pattern, input_value):
+        return False
+    return True
+
+# Set up error placeholders in the session state when creating inputs
+
+
 
 def load_image(image_file):
     """Load an image file."""
@@ -107,8 +139,31 @@ def main():
     with col3_input_filed:
         if doc_type and uploaded_file:
             metadata_types = get_metadata_types(doc_type_options[doc_type])
-            metadata_values = {meta['metadata_type']['id']: st.text_input(meta['metadata_type']['label'], key=f"meta_{meta['metadata_type']['id']}_{file_key}") for meta in metadata_types}
+            metadata_values = {}
+
+            for meta in metadata_types:
+                metadata_info = meta['metadata_type']
+                label = metadata_info['label']
+                required = meta['required']
+                input_key = f"meta_{metadata_info['id']}_{uploaded_file.name}"
+                
+                # Check if there's a lookup list
+                if metadata_info.get('lookup'):
+                    options = metadata_info['lookup'].split(',')
+                    # Use selectbox for lookup values
+                    selected_option = st.selectbox(
+                        f"{label}{' *' if required else ''}", options, key=input_key
+                    )
+                    metadata_values[metadata_info['id']] = selected_option
+                else:
+                    # Regular text input
+                    metadata_values[metadata_info['id']] = st.text_input(
+                        f"{label}{' *' if required else ''}",
+                        key=input_key
+                    )
+
             if st.button("Done and Submit", type="primary"):
+                # Perform validation and handle submission
                 handle_submission(uploaded_file, doc_type_options[doc_type], metadata_values)
 
 def display_pdf(uploaded_file):
@@ -149,10 +204,40 @@ def display_image(uploaded_file):
     st.image(image, caption='Uploaded Image', use_column_width=True)
 
 def handle_submission(uploaded_file, doc_type_id, metadata_values):
-    file_base64 = base64.b64encode(uploaded_file.getvalue()).decode('utf-8')
-    file_name = uploaded_file.name
-    save_and_download_json(file_base64, file_name, doc_type_id, metadata_values)
-    st.success("Data saved and submitted successfully!")
+    # Assuming 'get_metadata_types' returns the full metadata configuration for the document type
+    metadata_types = get_metadata_types(doc_type_id)
+    valid = True
+    error_messages = []
+
+    for meta_id, value in metadata_values.items():
+        meta_info = next((m for m in metadata_types if m['metadata_type']['id'] == meta_id), None)
+        if not meta_info:
+            continue  # Skip if metadata is not found
+
+        # Extract validation and requirement info
+        is_required = meta_info['required']
+        validation_info = meta_info['metadata_type'].get('validation_arguments', '')
+        pattern = safe_load_json(validation_info) if validation_info else ""
+
+        # Check for required fields and validate pattern if necessary
+        if is_required and not value.strip():
+            error_messages.append(f"Field '{meta_info['metadata_type']['label']}' is required.")
+            valid = False
+        elif pattern and not validate_input(value, pattern):
+            error_messages.append(f"Validation failed for {meta_info['metadata_type']['label']}: {value}")
+            valid = False
+
+    # Display all error messages if any
+    if error_messages:
+        for msg in error_messages:
+            st.error(msg)
+    
+    if valid:
+        file_base64 = base64.b64encode(uploaded_file.getvalue()).decode('utf-8')
+        file_name = uploaded_file.name
+        save_and_download_json(file_base64, file_name, doc_type_id, metadata_values)
+        st.success("Data saved and submitted successfully!")
+
 
 if __name__ == "__main__":
     main()

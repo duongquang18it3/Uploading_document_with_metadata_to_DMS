@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 import json
 import base64
-from PIL import Image
+from PIL import Image, ImageFilter
 import fitz  # PyMuPDF
 import io
 import re
@@ -191,8 +191,9 @@ def display_pdf(uploaded_file):
 
         # Display current page
         page = doc.load_page(current_page)
-        pix = page.get_pixmap()
+        pix = page.get_pixmap(dpi=300)
         img = Image.open(io.BytesIO(pix.tobytes("png")))
+        img = img.filter(ImageFilter.SHARPEN)
         st.image(img, caption=f"Page {current_page + 1} of {total_pages}", use_column_width=True)
     except Exception as e:
         st.error(f"Error in PDF processing: {e}")

@@ -47,12 +47,16 @@ def main():
 
         if selected_type_label:
             selected_type_id = document_type_options[selected_type_label]
-            # Lọc các tài liệu có document_type.id khớp
             filtered_documents = [doc for doc in all_documents if doc['document_type']['id'] == selected_type_id]
-            document_labels = [doc['label'] for doc in filtered_documents]
+            # Using a dictionary to avoid duplicates and maintain ID linkage
+            label_to_docs = {}
+            for doc in filtered_documents:
+                if doc['label'] in label_to_docs:
+                    label_to_docs[doc['label']].append(doc['id'])
+                else:
+                    label_to_docs[doc['label']] = [doc['id']]
 
-            # Tạo multiselect cho người dùng tìm kiếm hoặc chọn tài liệu
-            selected_docs = st.multiselect("Select or search documents based on the selected document type:", options=document_labels)
+            selected_docs = st.multiselect("Select or search documents based on the selected document type:", options=list(label_to_docs.keys()))
 
             if selected_docs:
                 st.write(f"You have selected the documents:")

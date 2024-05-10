@@ -7,6 +7,13 @@ import fitz  # PyMuPDF
 import io
 import re
 
+st.set_page_config(layout="wide", page_title="Document Viewer App")
+hide_menu_style = """
+        <style>
+        #MainMenu {visibility: hidden;}
+        </style>
+        """
+st.markdown(hide_menu_style, unsafe_allow_html=True)
 def safe_load_json(validation_arguments):
     try:
         # Replace single quotes with double quotes to make it valid JSON
@@ -108,7 +115,7 @@ def send_data_to_api(json_data):
     response = requests.post(url, json=json_data, headers=headers)
     return response
 def main():
-    st.set_page_config(layout="wide", page_title="Document Viewer App")
+    
     st.markdown("<style>.reportview-container .main .block-container{max-width: 90%;}</style>", unsafe_allow_html=True)
 
     document_types = get_document_types()

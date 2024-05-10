@@ -4,7 +4,7 @@ from requests.auth import HTTPBasicAuth
 st.set_page_config(layout="wide", page_title="Document Viewer App")
 hide_menu_style = """
         <style>
-        #MainMenu {visibility: hidden;}
+        .st-emotion-cache-zq5wmm {visibility: hidden;}
         </style>
         """
 st.markdown(hide_menu_style, unsafe_allow_html=True)

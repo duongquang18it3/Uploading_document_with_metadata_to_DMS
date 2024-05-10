@@ -147,30 +147,40 @@ def main():
         if doc_type and uploaded_file:
             metadata_types = get_metadata_types(doc_type_options[doc_type])
             metadata_values = {}
+            error_placeholders = {}  # Store placeholders for error messages
 
             for meta in metadata_types:
                 metadata_info = meta['metadata_type']
                 label = metadata_info['label']
                 required = meta['required']
                 input_key = f"meta_{metadata_info['id']}_{uploaded_file.name}"
-                
-                # Check if there's a lookup list
+                validation = metadata_info.get('validation', '')
+                validation_arguments = metadata_info.get('validation_arguments', '')
+                pattern = safe_load_json(validation_arguments) if 'RegularExpressionValidator' in validation and validation_arguments else ""
+
                 if metadata_info.get('lookup'):
                     options = metadata_info['lookup'].split(',')
-                    # Use selectbox for lookup values
                     selected_option = st.selectbox(
                         f"{label}{' *' if required else ''}", options, key=input_key
                     )
                     metadata_values[metadata_info['id']] = selected_option
                 else:
-                    # Regular text input
-                    metadata_values[metadata_info['id']] = st.text_input(
+                    
+                    user_input = st.text_input(
                         f"{label}{' *' if required else ''}",
                         key=input_key
                     )
+                    error_placeholders[metadata_info['id']] = st.empty()
+                    metadata_values[metadata_info['id']] = user_input
+
+                    # Immediate validation without rerun
+                    if user_input and pattern and not validate_input(user_input, pattern):
+                        error_placeholders[metadata_info['id']].error(f"Invalid input for {label}. Please match the required format.")
+                    else:
+                        error_placeholders[metadata_info['id']].empty()
 
             if st.button("Done and Submit", type="primary"):
-                # Perform validation and handle submission
+                # Perform final validation and handle submission
                 handle_submission(uploaded_file, doc_type_options[doc_type], metadata_values)
 
 def display_pdf(uploaded_file):

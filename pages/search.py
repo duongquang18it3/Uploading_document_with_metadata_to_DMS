@@ -1,7 +1,13 @@
 import streamlit as st
 import requests
 from requests.auth import HTTPBasicAuth
-
+st.set_page_config(layout="wide", page_title="Document Viewer App")
+hide_menu_style = """
+        <style>
+        #MainMenu {visibility: hidden;}
+        </style>
+        """
+st.markdown(hide_menu_style, unsafe_allow_html=True)
 def get_all_document_types(auth):
     url = "https://edms-demo.epik.live/api/v4/document_types/"
     document_types = []
@@ -23,7 +29,7 @@ def get_all_documents(auth):
         url = data['next']  # Cập nhật URL cho trang kế tiếp nếu có
     return documents
 
-st.set_page_config(layout="wide", page_title="Document Viewer App")
+
 # Giao diện
 def main():
     col_title_empty1, col_title, col_title_empty2 = st.columns([1,8,1])
